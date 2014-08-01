@@ -15,6 +15,7 @@ import moa.core.InstancesHeader;
 import moa.core.ObjectRepository;
 import moa.options.AbstractOptionHandler;
 import moa.options.FileOption;
+import moa.options.FloatOption;
 import moa.options.IntOption;
 import moa.streams.ArffFileStream;
 import moa.streams.InstanceStream;
@@ -29,11 +30,16 @@ InstanceStream {
 
 	public FileOption arffFileOption = new FileOption("arffFile", 'f',
 			"ARFF file to load.", null, "arff", false);
+
+
+	public IntOption instanceRandomSeedOption = new IntOption(
+			"instanceRandomSeed", 'i',
+			"Seed for random generation of instances.", 1);
 	
 	
-    public IntOption instanceRandomSeedOption = new IntOption(
-            "instanceRandomSeed", 'i',
-            "Seed for random generation of instances.", 1);
+    public FloatOption driftProbOption = new FloatOption("driftProb",
+            'd', "Probability of Drift.",
+            0.001, 0.00, 1.00);
 
 	protected InstancesHeader streamHeader;
 
@@ -44,14 +50,16 @@ InstanceStream {
 
 	protected LexiconEvaluator le;
 
+
+	public SentimentDriftGenerator() {
+	}
+
 	public SentimentDriftGenerator(String arffFileName){
-		super();
 		this.arffFileOption.setValue(arffFileName);
 
-		this.arffFileStream=new ArffFileStream(arffFileName,0);
+		//this.arffFileStream=new ArffFileStream(arffFileName,0);
 
-		
-		
+
 		restart();
 	}
 
@@ -85,12 +93,15 @@ InstanceStream {
 	public boolean hasMoreInstances() {
 		return this.arffFileStream.hasMoreInstances();
 	}
-	
+
 	@Override
 	protected void prepareForUseImpl(TaskMonitor monitor,
 			ObjectRepository repository) {
 		// generate header
 
+		this.arffFileStream=new ArffFileStream(this.arffFileOption.getValue(),0);
+
+		//this.arffFileStream.prepareForUse();
 		
 		this.le = new LexiconEvaluator("lexicons/AFINN-111.txt");
 		try {
@@ -99,12 +110,12 @@ InstanceStream {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+
 		
-		this.arffFileStream.prepareForUse();
 		InstancesHeader inputHeader=this.arffFileStream.getHeader();
-	
-		
-		
+
+
+
 		ArrayList<Attribute> attributes = new ArrayList<Attribute>();
 
 		// Adds all attributes of the inputformat
@@ -112,10 +123,10 @@ InstanceStream {
 			attributes.add(inputHeader.attribute(i));
 		}
 
-	//	ArrayList<Attribute> attributes = new ArrayList<Attribute>();
+		//	ArrayList<Attribute> attributes = new ArrayList<Attribute>();
 
 		// The content of the message
-	//	attributes.add(new Attribute("content", (ArrayList<String>) null));
+		//	attributes.add(new Attribute("content", (ArrayList<String>) null));
 
 		// The target label
 		ArrayList<String> label = new ArrayList<String>();
@@ -140,29 +151,29 @@ InstanceStream {
 	public Instance nextInstance() {
 
 		Instance inputInst= this.arffFileStream.nextInstance();
-		
-		
+
+
 		// construct instance
 		InstancesHeader header = getHeader();
 
 		double values[] = new double[header.numAttributes()];
-		
+
 		String content=inputInst.stringValue(0);
-		
+
 		values[0] = header.attribute(0).addStringValue(content);
-		
+
 		List<String> tokens=MyUtils.cleanTokenize(content);
-		
-		
+
+
 		// the change
 		double change=this.instanceRandom.nextDouble();
-		if(change<0.01){
+		if(change<this.driftProbOption.getValue()){
 			System.out.println("CHANGE \n \n");
 			this.le.createUniformNoise(this.instanceRandom, .6, -5, 5);
 		}
-		
+
 		double score=le.evaluateStrengthLexicon(tokens);
-					
+
 		if(score>1){
 			values[1] = header.attribute(1).indexOfValue("positive");			
 		}
@@ -172,8 +183,8 @@ InstanceStream {
 		else{
 			values[1] = header.attribute(1).indexOfValue("neutral");					
 		}
-		
-		
+
+
 
 		Instance inst = new DenseInstance(1,values);	
 		inst.setDataset(header);
@@ -192,6 +203,6 @@ InstanceStream {
 		this.arffFileStream.restart();
 	}
 
-	
+
 
 }
