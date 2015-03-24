@@ -124,13 +124,34 @@ public class MyDoTask {
 		}
 	}
 	
-	static public void main(String args[]){
-		try {
-			runMoa("EvaluatePrequential -l trees.HoeffdingTree");
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	static public void main(String args[]) throws Exception{
+		
+		// create standard options
+		FlagOption suppressStatusOutputOption = new FlagOption(
+				"suppressStatusOutput", 'S',
+				"Suppress the task status output that is normally send to stderr.");
+		FlagOption suppressResultOutputOption = new FlagOption(
+				"suppressResultOutput", 'R',
+				"Suppress the task result output that is normally send to stdout.");
+		IntOption statusUpdateFrequencyOption = new IntOption(
+				"statusUpdateFrequency",
+				'F',
+				"How many milliseconds to wait between status updates.",
+				1000, 0, Integer.MAX_VALUE);
+		Option[] extraOptions = new Option[]{
+				suppressStatusOutputOption, suppressResultOutputOption,
+				statusUpdateFrequencyOption};
+		
+		Task task = (Task) ClassOption.cliStringToObject("EvaluatePrequential -l trees.HoeffdingTree", Task.class, extraOptions); 
+		Object result=task.doTask(); 
+		System.out.println(result.toString());
+		
+//		try {
+//			runMoa("EvaluatePrequential -l trees.HoeffdingTree");
+//		} catch (Exception e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 		
 	}
 
